@@ -25,7 +25,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class Server implements AutoCloseable {
+public final class Server implements AutoCloseable {
 
     private static final byte[] CRLF = bytes("\r\n");
     private final BlockingQueue<Response> queue;
@@ -99,6 +99,10 @@ public class Server implements AutoCloseable {
             queue.offer(r);
             return server;
         }
+
+        public Builder response() {
+            return add().response();
+        }
     }
 
     private Server startServer() {
@@ -128,6 +132,7 @@ public class Server implements AutoCloseable {
                 System.out.println("accepted " + socket);
                 InputStream in = socket.getInputStream();
                 String request = readLine(in);
+                System.out.print(request);
                 Optional<Long> contentLength = Optional.empty();
                 {
                     List<String> headers = new ArrayList<>();
@@ -225,7 +230,7 @@ public class Server implements AutoCloseable {
             }
             previous = b;
         }
-        return out.toString(StandardCharsets.UTF_8);
+        return new String(out.toByteArray(), StandardCharsets.UTF_8);
     }
 
     @Override

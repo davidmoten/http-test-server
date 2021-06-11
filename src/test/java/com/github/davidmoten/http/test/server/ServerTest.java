@@ -24,7 +24,10 @@ public class ServerTest {
 
     @Test
     public void testServer() throws Exception {
-        try (Server server = Server.start().response().statusCode(200).add()) {
+        try (Server server = Server.start() //
+                .response().statusCode(200) //
+                .response().statusCode(500) //
+                .add()) {
             URL url = new URL(server.baseUrl() + "thing?state=joy");
             HttpURLConnection c = (HttpURLConnection) url.openConnection();
             c.setRequestMethod("GET");
