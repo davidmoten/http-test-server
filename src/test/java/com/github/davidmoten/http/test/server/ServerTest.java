@@ -37,6 +37,38 @@ public class ServerTest {
             Server.readAll(c.getInputStream());
             assertEquals(200, c.getResponseCode());
             assertEquals(1, c.getHeaderFields().size());
+            c.disconnect();
+        }
+    }
+    
+    @Test
+    public void testServerReturnsBody() throws Exception {
+        try (Server server = Server.start() //
+                .response().body("hi there").statusCode(200) //
+                .response().statusCode(500) //
+                .add()) {
+            URL url = new URL(server.baseUrl() + "thing?state=joy");
+            HttpURLConnection c = (HttpURLConnection) url.openConnection();
+            c.setRequestMethod("GET");
+            c.addRequestProperty("Accept", "application-json");
+            c.setDoOutput(false);
+            c.setDoInput(true);
+            assertEquals("hi there", new String(Server.readAll(c.getInputStream()), StandardCharsets.UTF_8));
+            assertEquals(200, c.getResponseCode());
+            assertEquals("8", c.getHeaderField("Content-Length"));
+            c.disconnect();
+        }
+    }
+
+    @Test
+    public void testServerPut() throws Exception {
+        try (Server server = Server.start() //
+                .response().add()) {
+            URL url = new URL(server.baseUrl() + "thing?state=joy");
+            HttpURLConnection c = (HttpURLConnection) url.openConnection();
+            c.setRequestMethod("PUT");
+            assertEquals(200, c.getResponseCode());
+            c.disconnect();
         }
     }
 

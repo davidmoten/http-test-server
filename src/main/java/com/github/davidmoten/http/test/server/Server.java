@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -31,6 +32,7 @@ public final class Server implements AutoCloseable {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private ServerSocket ss;
     private volatile boolean keepGoing = true;
+    private final CountDownLatch latch = new CountDownLatch(1);
 
     private Server() {
         this.queue = new LinkedBlockingQueue<Response>();
@@ -127,76 +129,82 @@ public final class Server implements AutoCloseable {
 
     private void listen(ServerSocket ss) {
         try {
-            ss.setSoTimeout(1000);
-        } catch (SocketException e1) {
-            return;
-        }
-        while (keepGoing) {
             try {
-                Socket socket = ss.accept();
-                InputStream in = socket.getInputStream();
-                while (keepGoing) {
-                    // read request line
-                    readLine(in);
-                    Optional<Long> contentLength = Optional.empty();
-                    {
-                        List<String> headers = new ArrayList<>();
-                        String line;
-                        while ((line = readLine(in)).length() > 2) {
-                            headers.add(line.substring(0, line.length() - 2));
-                            String lower = line.toLowerCase(Locale.ENGLISH);
-                            if (lower.startsWith("content-length: ")) {
-                                try {
-                                    contentLength = Optional.of(Long
-                                            .parseLong(lower.substring(lower.indexOf(':') + 1)));
-                                } catch (NumberFormatException e) {
-                                    // do nothing
-                                }
-                            }
-                        }
-                    }
-                    if (contentLength.isPresent()) {
-                        // read body
-                        readAll(new LimitingInputStream(in, contentLength.get()));
-                    }
-                    while (keepGoing) {
-                        try {
-                            Response response = queue.poll(100, TimeUnit.MILLISECONDS);
-                            if (response != null) {
-                                try (OutputStream out = socket.getOutputStream()) {
-
-                                    // HTTP/1.1 200 OK
-                                    // headerName: headerValue
-                                    // empty line
-                                    // body
-
-                                    out.write(bytes("HTTP/1.1 " + response.statusCode() + " "
-                                            + response.reason()));
-                                    out.write(CRLF);
-                                    for (Entry<String, List<String>> header : response.headers()
-                                            .entrySet()) {
-                                        String line = header.getKey() + ": " + header.getValue()
-                                                .stream().collect(Collectors.joining(","));
-                                        out.write(bytes(line));
-                                        out.write(CRLF);
-                                    }
-                                    out.write(CRLF);
-                                    out.flush();
-                                    out.write(response.body());
-                                    out.flush();
-                                    break;
-                                }
-                            }
-                        } catch (InterruptedException e) {
-                            // do nothing
-                        }
-                    }
-                }
-            } catch (SocketTimeoutException | SocketException e) {
-                // that's ok go round again
-            } catch (IOException e) {
-                e.printStackTrace();
+                ss.setSoTimeout(1000);
+            } catch (SocketException e1) {
+                return;
             }
+            while (keepGoing) {
+                try {
+                    Socket socket = ss.accept();
+                    InputStream in = socket.getInputStream();
+                    while (keepGoing) {
+                        // read request line
+                        readLine(in);
+                        Optional<Long> contentLength = Optional.empty();
+                        {
+                            List<String> headers = new ArrayList<>();
+                            String line;
+                            while ((line = readLine(in)).length() > 2) {
+                                headers.add(line.substring(0, line.length() - 2));
+                                String lower = line.toLowerCase(Locale.ENGLISH);
+                                if (lower.startsWith("content-length: ")) {
+                                    try {
+                                        contentLength = Optional.of(Long.parseLong(
+                                                lower.substring(lower.indexOf(':') + 1)));
+                                    } catch (NumberFormatException e) {
+                                        // do nothing
+                                    }
+                                }
+                            }
+                        }
+                        if (contentLength.isPresent()) {
+                            // read body
+                            readAll(new LimitingInputStream(in, contentLength.get()));
+                        }
+                        while (keepGoing) {
+                            try {
+                                Response response = queue.poll(100, TimeUnit.MILLISECONDS);
+                                if (response != null) {
+                                    try (OutputStream out = socket.getOutputStream()) {
+
+                                        // HTTP/1.1 200 OK
+                                        // headerName: headerValue
+                                        // empty line
+                                        // body
+
+                                        out.write(bytes("HTTP/1.1 " + response.statusCode() + " "
+                                                + response.reason()));
+                                        out.write(CRLF);
+                                        for (Entry<String, List<String>> header : response.headers()
+                                                .entrySet()) {
+                                            String line = header.getKey() + ": " + header.getValue()
+                                                    .stream().collect(Collectors.joining(","));
+                                            out.write(bytes(line));
+                                            out.write(CRLF);
+                                        }
+                                        out.write(CRLF);
+                                        out.flush();
+                                        if (response.body().length > 0) {
+                                            out.write(response.body());
+                                            out.flush();
+                                        }
+                                        break;
+                                    }
+                                }
+                            } catch (InterruptedException e) {
+                                // do nothing
+                            }
+                        }
+                    }
+                } catch (SocketTimeoutException | SocketException e) {
+                    // that's ok go round again
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } finally {
+            latch.countDown();
         }
     }
 
@@ -253,5 +261,10 @@ public final class Server implements AutoCloseable {
             // ignore
         }
         executor.shutdown();
+        try {
+            latch.await(1, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            // do nothing
+        }
     }
 }
