@@ -3,7 +3,7 @@ package com.github.davidmoten.http.test.server;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class StatusCode {
+final class StatusCode {
 
     private static final Map<Integer, String> map = createMap();
 
@@ -53,7 +53,7 @@ public final class StatusCode {
         return map;
     }
 
-    public static String reason(int statusCode) {
+    static String reason(int statusCode) {
         String reason = map.get(statusCode);
         if (reason == null) {
             return map.get(statusCode / 100 * 100);
