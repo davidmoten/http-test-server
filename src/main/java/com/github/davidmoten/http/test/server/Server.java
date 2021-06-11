@@ -95,6 +95,9 @@ public final class Server implements AutoCloseable {
         }
 
         public Server add() {
+            if (reason == null) {
+                reason = StatusCode.reason(statusCode);
+            }
             Response r = new Response(statusCode, reason, headers, body);
             queue.offer(r);
             return server;
