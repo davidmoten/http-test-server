@@ -11,7 +11,7 @@ public final class Response implements AutoCloseable {
     private final InputStream body;
     private String reason;
 
-    public Response(int statusCode, String reason, Map<String, List<String>> headers,
+    Response(int statusCode, String reason, Map<String, List<String>> headers,
             InputStream body) {
         this.statusCode = statusCode;
         this.reason = reason;

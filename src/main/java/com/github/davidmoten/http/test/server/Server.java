@@ -61,17 +61,17 @@ public final class Server implements AutoCloseable {
             this.queue = queue;
         }
 
-        Builder statusCode(int statusCode) {
+        public Builder statusCode(int statusCode) {
             this.statusCode = statusCode;
             return this;
         }
 
-        Builder reason(String reason) {
+        public Builder reason(String reason) {
             this.reason = reason;
             return this;
         }
 
-        Builder header(String name, String value) {
+        public Builder header(String name, String value) {
             List<String> list = headers.get(name);
             if (list == null) {
                 list = new ArrayList<>();
@@ -81,15 +81,15 @@ public final class Server implements AutoCloseable {
             return this;
         }
 
-        Builder body(String body) {
+        public Builder body(String body) {
             return body(bytes(body));
         }
 
-        Builder body(byte[] body) {
+        public Builder body(byte[] body) {
             return body(new ByteArrayInputStream(body));
         }
 
-        Builder body(InputStream body) {
+        public Builder body(InputStream body) {
             this.body = body;
             return this;
         }
@@ -234,10 +234,14 @@ public final class Server implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         System.out.println("closing Server");
         this.keepGoing = false;
-        this.ss.close();
+        try {
+            this.ss.close();
+        } catch (IOException e) {
+            // ignore
+        }
         executor.shutdown();
     }
 }
