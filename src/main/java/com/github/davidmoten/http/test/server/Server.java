@@ -137,7 +137,7 @@ public final class Server implements AutoCloseable {
                 InputStream in = socket.getInputStream();
                 while (keepGoing) {
                     // read request line
-                    String request = readLine(in);
+                    readLine(in);
                     Optional<Long> contentLength = Optional.empty();
                     {
                         List<String> headers = new ArrayList<>();
