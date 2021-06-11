@@ -9,6 +9,13 @@ public class ServerMain {
                 .body("something") //
                 .header("greeting", "hello") //
                 .header("Content-Type", "text/plain") //
+                .response() //
+                .statusCode(202) //
+                .body("something else") //
+                .header("greeting", "hello") //
+                .header("Content-Type", "text/plain") //
+                .response()
+                .body("hi there") //
                 .add();
         System.out.println(server.baseUrl());
         Thread.sleep(100000);

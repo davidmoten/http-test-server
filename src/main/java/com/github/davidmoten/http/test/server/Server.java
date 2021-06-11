@@ -33,7 +33,7 @@ public final class Server implements AutoCloseable {
     private ServerSocket ss;
     private volatile boolean keepGoing = true;
 
-    public Server() {
+    private Server() {
         this.queue = new LinkedBlockingQueue<Response>();
     }
 
@@ -132,58 +132,62 @@ public final class Server implements AutoCloseable {
             try {
                 Socket socket = ss.accept();
                 InputStream in = socket.getInputStream();
-                // read request line
-                readLine(in);
-                Optional<Long> contentLength = Optional.empty();
-                {
-                    List<String> headers = new ArrayList<>();
-                    String line;
-                    while ((line = readLine(in)).length() > 2) {
-                        headers.add(line.substring(0, line.length() - 2));
-                        String lower = line.toLowerCase(Locale.ENGLISH);
-                        if (lower.startsWith("content-length: ")) {
-                            try {
-                                contentLength = Optional.of(
-                                        Long.parseLong(lower.substring(lower.indexOf(':') + 1)));
-                            } catch (NumberFormatException e) {
-                                // do nothing
+                while (keepGoing) {
+                    // read request line
+                    readLine(in);
+                    Optional<Long> contentLength = Optional.empty();
+                    {
+                        List<String> headers = new ArrayList<>();
+                        String line;
+                        while ((line = readLine(in)).length() > 2) {
+                            headers.add(line.substring(0, line.length() - 2));
+                            String lower = line.toLowerCase(Locale.ENGLISH);
+                            if (lower.startsWith("content-length: ")) {
+                                try {
+                                    contentLength = Optional.of(Long
+                                            .parseLong(lower.substring(lower.indexOf(':') + 1)));
+                                } catch (NumberFormatException e) {
+                                    // do nothing
+                                }
                             }
                         }
                     }
-                }
-                if (contentLength.isPresent()) {
-                    // read body
-                    readAll(in);
-                }
-                while (keepGoing) {
-                    try {
-                        Response response = queue.poll(100, TimeUnit.MILLISECONDS);
-                        if (response != null) {
-                            try (OutputStream out = socket.getOutputStream()) {
+                    if (contentLength.isPresent()) {
+                        // read body
+                        readAll(in);
+                    }
+                    while (keepGoing) {
+                        try {
+                            Response response = queue.poll(100, TimeUnit.MILLISECONDS);
+                            System.out.println(response.statusCode());
+                            if (response != null) {
+                                try (OutputStream out = socket.getOutputStream()) {
 
-                                // HTTP/1.1 200 OK
-                                // headerName: headerValue
-                                // empty line
-                                // body
+                                    // HTTP/1.1 200 OK
+                                    // headerName: headerValue
+                                    // empty line
+                                    // body
 
-                                out.write(bytes("HTTP/1.1 " + response.statusCode() + " "
-                                        + response.reason()));
-                                out.write(CRLF);
-                                for (Entry<String, List<String>> header : response.headers()
-                                        .entrySet()) {
-                                    String line = header.getKey() + ": " + header.getValue()
-                                            .stream().collect(Collectors.joining(","));
-                                    out.write(bytes(line));
+                                    out.write(bytes("HTTP/1.1 " + response.statusCode() + " "
+                                            + response.reason()));
                                     out.write(CRLF);
+                                    for (Entry<String, List<String>> header : response.headers()
+                                            .entrySet()) {
+                                        String line = header.getKey() + ": " + header.getValue()
+                                                .stream().collect(Collectors.joining(","));
+                                        out.write(bytes(line));
+                                        out.write(CRLF);
+                                    }
+                                    out.write(CRLF);
+                                    out.flush();
+                                    copy(response.body(), out);
+                                    out.flush();
+                                    break;
                                 }
-                                out.write(CRLF);
-                                out.flush();
-                                copy(response.body(), out);
-                                break;
                             }
+                        } catch (InterruptedException e) {
+                            // do nothing
                         }
-                    } catch (InterruptedException e) {
-                        // do nothing
                     }
                 }
             } catch (SocketTimeoutException | SocketException e) {
