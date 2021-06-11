@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.github.davidmoten</groupId>
+        <artifactId>sonatype-parent</artifactId>
+        <version>0.1</version>
+    </parent>
+    <artifactId>http-test-server</artifactId>
+    <version>0.1-SNAPSHOT</version>
+
+    <name>${project.artifactId}</name>
+    <description>a simple http server for unit testing</description>
+    <packaging>bundle</packaging>
+
+    <url>http://github.com/davidmoten/http-test-server</url>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <scm.url>scm:git:https://github.com/davidmoten/http-test-server.git</scm.url>
+
+        <checkstyle.version>3.1.2</checkstyle.version>
+        <checkstyle.xml>src/main/checkstyle/checkstyle.xml</checkstyle.xml>
+        <checkstyle.suppressions.xml>src/main/checkstyle/suppressions.xml</checkstyle.suppressions.xml>
+        <checkstyle.core.version>8.40</checkstyle.core.version>
+        <javadoc.version>3.3.0</javadoc.version>
+        <pmd.version>3.14.0</pmd.version>
+        <project.info.version>3.1.1</project.info.version>
+        <jxr.version>3.1.1</jxr.version>
+        <taglist.version>2.4</taglist.version>
+        <spotbugs.version>4.2.3</spotbugs.version>
+        <m3.site.version>3.9.1</m3.site.version>
+        <changelog.version>2.2</changelog.version>
+        <changelog.version>2.2</changelog.version>
+        <bundle.plugin.version>5.1.2</bundle.plugin.version>
+        <jacoco.version>0.8.7</jacoco.version>
+
+        <junit.version>4.13.2</junit.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+
+    <ciManagement>
+        <system>Travis</system>
+        <url>https://travis-ci.org/davidmoten/http-test-server</url>
+    </ciManagement>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/davidmoten/http-test-server/issues</url>
+    </issueManagement>
+
+    <inceptionYear>2021</inceptionYear>
+    <developers>
+        <developer>
+            <id>dave</id>
+            <name>Dave Moten</name>
+            <url>https://github.com/davidmoten/</url>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+            <timezone>+10</timezone>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>${scm.url}</connection>
+        <developerConnection>${scm.url}</developerConnection>
+        <url>${scm.url}</url>
+        <tag>0.1</tag>
+    </scm>
+
+    <dependencies>
+
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.davidmoten</groupId>
+            <artifactId>junit-extras</artifactId>
+            <version>0.4</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.davidmoten</groupId>
+            <artifactId>kool</artifactId>
+            <version>0.1.17</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>3.11.0</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>${maven.compiler.target}</source>
+                    <target>${maven.compiler.target}</target>
+                    <!-- required for inferring field names from java parameters -->
+                    <compilerArgument>-parameters</compilerArgument>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-site-plugin</artifactId>
+                <version>${m3.site.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-descriptor</id>
+                        <goals>
+                            <goal>attach-descriptor</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M5</version>
+                <configuration>
+                    <!-- required to get jacoco to work locally -->
+                    <argLine>@{argLine}</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${spotbugs.version}</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <xmlOutput>true</xmlOutput>
+                </configuration>
+                <executions>
+                    <!-- <execution> -->
+                    <!-- <goals> -->
+                    <!-- <goal>check</goal> -->
+                    <!-- </goals> -->
+                    <!-- </execution> -->
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${pmd.version}</version>
+                <executions>
+                    <!-- <execution> -->
+                    <!-- <goals> -->
+                    <!-- <goal>check</goal> -->
+                    <!-- <goal>cpd-check</goal> -->
+                    <!-- </goals> -->
+                    <!-- </execution> -->
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>${bundle.plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <obrRepository>NONE</obrRepository>
+                </configuration>
+            </plugin>
+            <!-- <plugin> -->
+            <!-- <groupId>org.apache.maven.plugins</groupId> -->
+            <!-- <artifactId>maven-checkstyle-plugin</artifactId> -->
+            <!-- <version>${checkstyle.version}</version> -->
+            <!-- <configuration> -->
+            <!-- <includeTestSourceDirectory>true</includeTestSourceDirectory> -->
+            <!-- <configLocation>${checkstyle.xml}</configLocation> -->
+            <!-- <encoding>UTF-8</encoding> -->
+            <!-- <consoleOutput>true</consoleOutput> -->
+            <!-- <failsOnError>false</failsOnError> -->
+            <!-- <linkXRef>false</linkXRef> -->
+            <!-- <suppressionsLocation>${checkstyle.suppressions.xml}</suppressionsLocation> -->
+            <!-- </configuration> -->
+            <!-- <dependencies> -->
+            <!-- <dependency> -->
+            <!-- <groupId>com.puppycrawl.tools</groupId> -->
+            <!-- <artifactId>checkstyle</artifactId> -->
+            <!-- <version>${checkstyle.core.version}</version> -->
+            <!-- </dependency> -->
+            <!-- </dependencies> -->
+            <!-- <executions> -->
+            <!-- <execution> -->
+            <!-- <id>validate</id> -->
+            <!-- <phase>validate</phase> -->
+            <!-- <goals> -->
+            <!-- <goal>check</goal> -->
+            <!-- </goals> -->
+            <!-- </execution> -->
+            <!-- </executions> -->
+            <!-- </plugin> -->
+        </plugins>
+    </build>
+    <reporting>
+        <excludeDefaults>true</excludeDefaults>
+        <outputDirectory>${project.build.directory}/site</outputDirectory>
+        <plugins>
+            <!-- this one should go first so that it is available to other 
+                plugins when they run -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jxr-plugin</artifactId>
+                <version>${jxr.version}</version>
+                <configuration>
+                    <aggregate>true</aggregate>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle.version}</version>
+                <configuration>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <configLocation>${checkstyle.xml}</configLocation>
+                    <suppressionsLocation>${checkstyle.suppressions.xml}</suppressionsLocation>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${pmd.version}</version>
+                <configuration>
+                    <targetJdk>${maven.compiler.target}</targetJdk>
+                    <aggregate>true</aggregate>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>${spotbugs.version}</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <xmlOutput>true</xmlOutput>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-project-info-reports-plugin</artifactId>
+                <version>${project.info.version}</version>
+                <configuration>
+                    <dependencyDetailsEnabled>false</dependencyDetailsEnabled>
+                    <dependencyLocationsEnabled>false</dependencyLocationsEnabled>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>taglist-maven-plugin</artifactId>
+                <version>${taglist.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${javadoc.version}</version>
+                <configuration>
+                    <aggregate>true</aggregate>
+                </configuration>
+            </plugin>
+        </plugins>
+    </reporting>
+
+</project>
