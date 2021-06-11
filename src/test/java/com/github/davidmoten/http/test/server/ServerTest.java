@@ -33,7 +33,7 @@ public class ServerTest {
             c.setDoInput(true);
             Server.readAll(c.getInputStream());
             assertEquals(200, c.getResponseCode());
-            assertEquals(0, c.getHeaderFields().size());
+            assertEquals(1, c.getHeaderFields().size());
         }
     }
 

@@ -14,8 +14,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -117,7 +119,7 @@ public class Server implements AutoCloseable {
         try {
             ss.setSoTimeout(1000);
         } catch (SocketException e1) {
-            throw new RuntimeException(e1);
+            return;
         }
         while (keepGoing) {
             try {
@@ -125,17 +127,30 @@ public class Server implements AutoCloseable {
                 Socket socket = ss.accept();
                 System.out.println("accepted " + socket);
                 InputStream in = socket.getInputStream();
+                String request = readLine(in);
+                Optional<Long> contentLength = Optional.empty();
                 {
-                    List<String> lines = new ArrayList<>();
+                    List<String> headers = new ArrayList<>();
                     String line;
                     while ((line = readLine(in)).length() > 2) {
                         System.out.print(line);
-                        lines.add(line.substring(0, line.length() - 2));
+                        headers.add(line.substring(0, line.length() - 2));
+                        String lower = line.toLowerCase(Locale.ENGLISH);
+                        if (lower.startsWith("content-length: ")) {
+                            try {
+                                contentLength = Optional.of(
+                                        Long.parseLong(lower.substring(lower.indexOf(':') + 1)));
+                            } catch (NumberFormatException e) {
+                                // do nothing
+                            }
+                        }
                     }
                 }
-                System.out.println("reading body");
-                // read body
-                readAll(in);
+                if (contentLength.isPresent()) {
+                    System.out.println("reading body");
+                    // read body
+                    readAll(in);
+                }
                 while (keepGoing) {
                     try {
                         System.out.println("polling response queue");
@@ -169,7 +184,7 @@ public class Server implements AutoCloseable {
                         // do nothing
                     }
                 }
-            } catch (SocketTimeoutException e) {
+            } catch (SocketTimeoutException | SocketException e) {
                 // that's ok go round again
             } catch (IOException e) {
                 e.printStackTrace();
@@ -215,6 +230,7 @@ public class Server implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        System.out.println("closing Server");
         this.keepGoing = false;
         this.ss.close();
         executor.shutdown();
