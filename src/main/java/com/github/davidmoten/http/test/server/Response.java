@@ -1,18 +1,16 @@
 package com.github.davidmoten.http.test.server;
 
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
-public final class Response implements AutoCloseable {
+public final class Response {
 
     private final int statusCode;
     private final Map<String, List<String>> headers;
-    private final InputStream body;
+    private final byte[] body;
     private String reason;
 
-    Response(int statusCode, String reason, Map<String, List<String>> headers,
-            InputStream body) {
+    Response(int statusCode, String reason, Map<String, List<String>> headers, byte[] body) {
         this.statusCode = statusCode;
         this.reason = reason;
         this.headers = headers;
@@ -27,15 +25,8 @@ public final class Response implements AutoCloseable {
         return headers;
     }
 
-    public InputStream body() {
+    public byte[] body() {
         return body;
-    }
-
-    @Override
-    public void close() throws Exception {
-        if (body != null) {
-            body.close();
-        }
     }
 
     public String reason() {

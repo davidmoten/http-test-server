@@ -1,6 +1,5 @@
 package com.github.davidmoten.http.test.server;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,7 +52,7 @@ public final class Server implements AutoCloseable {
         private int statusCode = 200;
         private String reason;
         private final Map<String, List<String>> headers = new HashMap<>();
-        private InputStream body = new ByteArrayInputStream(new byte[0]);
+        private byte[] body = new byte[0];
         private final Server server;
 
         Builder(Server server, BlockingQueue<Response> queue) {
@@ -86,12 +85,16 @@ public final class Server implements AutoCloseable {
         }
 
         public Builder body(byte[] body) {
-            return body(new ByteArrayInputStream(body));
+            this.body = body;
+            return header("Content-Length", "" + body.length);
         }
 
         public Builder body(InputStream body) {
-            this.body = body;
-            return this;
+            try {
+                return body(readAllAndClose(body));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
 
         public Server add() {
@@ -134,7 +137,8 @@ public final class Server implements AutoCloseable {
                 InputStream in = socket.getInputStream();
                 while (keepGoing) {
                     // read request line
-                    readLine(in);
+                    String request = readLine(in);
+                    System.out.print("request=" + request);
                     Optional<Long> contentLength = Optional.empty();
                     {
                         List<String> headers = new ArrayList<>();
@@ -154,7 +158,7 @@ public final class Server implements AutoCloseable {
                     }
                     if (contentLength.isPresent()) {
                         // read body
-                        readAll(in);
+                        readAll(new LimitingInputStream(in, contentLength.get()));
                     }
                     while (keepGoing) {
                         try {
@@ -180,7 +184,7 @@ public final class Server implements AutoCloseable {
                                     }
                                     out.write(CRLF);
                                     out.flush();
-                                    copy(response.body(), out);
+                                    out.write(response.body());
                                     out.flush();
                                     break;
                                 }
@@ -198,13 +202,13 @@ public final class Server implements AutoCloseable {
         }
     }
 
-    private static void copy(InputStream in, OutputStream out) throws IOException {
-        byte[] buffer = new byte[8192];
-        int n;
-        while ((n = in.read(buffer)) != -1) {
-            out.write(buffer, 0, n);
-        }
-    }
+//    private static void copy(InputStream in, OutputStream out) throws IOException {
+//        byte[] buffer = new byte[8192];
+//        int n;
+//        while ((n = in.read(buffer)) != -1) {
+//            out.write(buffer, 0, n);
+//        }
+//    }
 
     private static final byte[] bytes(String s) {
         return s.getBytes(StandardCharsets.UTF_8);
@@ -218,6 +222,14 @@ public final class Server implements AutoCloseable {
             out.write(buffer, 0, n);
         }
         return out.toByteArray();
+    }
+
+    static final byte[] readAllAndClose(InputStream in) throws IOException {
+        try {
+            return readAll(in);
+        } finally {
+            in.close();
+        }
     }
 
     static String readLine(InputStream in) throws IOException {
