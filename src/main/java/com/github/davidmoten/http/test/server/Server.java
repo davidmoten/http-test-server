@@ -130,18 +130,15 @@ public final class Server implements AutoCloseable {
         }
         while (keepGoing) {
             try {
-                System.out.println("accepting");
                 Socket socket = ss.accept();
-                System.out.println("accepted " + socket);
                 InputStream in = socket.getInputStream();
-                String request = readLine(in);
-                System.out.print(request);
+                // read request line
+                readLine(in);
                 Optional<Long> contentLength = Optional.empty();
                 {
                     List<String> headers = new ArrayList<>();
                     String line;
                     while ((line = readLine(in)).length() > 2) {
-                        System.out.print(line);
                         headers.add(line.substring(0, line.length() - 2));
                         String lower = line.toLowerCase(Locale.ENGLISH);
                         if (lower.startsWith("content-length: ")) {
@@ -155,16 +152,13 @@ public final class Server implements AutoCloseable {
                     }
                 }
                 if (contentLength.isPresent()) {
-                    System.out.println("reading body");
                     // read body
                     readAll(in);
                 }
                 while (keepGoing) {
                     try {
-                        System.out.println("polling response queue");
                         Response response = queue.poll(100, TimeUnit.MILLISECONDS);
                         if (response != null) {
-                            System.out.println("response=" + response);
                             try (OutputStream out = socket.getOutputStream()) {
 
                                 // HTTP/1.1 200 OK
