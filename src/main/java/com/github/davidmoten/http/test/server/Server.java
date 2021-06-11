@@ -138,7 +138,6 @@ public final class Server implements AutoCloseable {
                 while (keepGoing) {
                     // read request line
                     String request = readLine(in);
-                    System.out.print("request=" + request);
                     Optional<Long> contentLength = Optional.empty();
                     {
                         List<String> headers = new ArrayList<>();
@@ -163,7 +162,6 @@ public final class Server implements AutoCloseable {
                     while (keepGoing) {
                         try {
                             Response response = queue.poll(100, TimeUnit.MILLISECONDS);
-                            System.out.println(response.statusCode());
                             if (response != null) {
                                 try (OutputStream out = socket.getOutputStream()) {
 
@@ -248,7 +246,6 @@ public final class Server implements AutoCloseable {
 
     @Override
     public void close() {
-        System.out.println("closing Server");
         this.keepGoing = false;
         try {
             this.ss.close();
