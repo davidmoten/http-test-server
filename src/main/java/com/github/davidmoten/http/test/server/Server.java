@@ -93,7 +93,7 @@ public final class Server implements AutoCloseable {
 
         public Builder body(InputStream body) {
             try {
-                return body(readAllAndClose(body));
+                return body(Util.readAllAndClose(body));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -135,72 +135,79 @@ public final class Server implements AutoCloseable {
                 return;
             }
             while (keepGoing) {
+                Socket socket = null;
                 try {
-                    Socket socket = ss.accept();
+                    socket = ss.accept();
                     InputStream in = socket.getInputStream();
+                    // read request line
+                    readLine(in);
+                    Optional<Long> contentLength = Optional.empty();
+                    {
+                        List<String> headers = new ArrayList<>();
+                        String line;
+                        while ((line = readLine(in)).length() > 2) {
+                            headers.add(line.substring(0, line.length() - 2));
+                            String lower = line.toLowerCase(Locale.ENGLISH);
+                            if (lower.startsWith("content-length: ")) {
+                                try {
+                                    contentLength = Optional.of(Long
+                                            .parseLong(lower.substring(lower.indexOf(':') + 1)));
+                                } catch (NumberFormatException e) {
+                                    // do nothing
+                                }
+                            }
+                        }
+                    }
+                    if (contentLength.isPresent()) {
+                        // read body
+                        Util.readAll(new LimitingInputStream(in, contentLength.get()));
+                    }
                     while (keepGoing) {
-                        // read request line
-                        readLine(in);
-                        Optional<Long> contentLength = Optional.empty();
-                        {
-                            List<String> headers = new ArrayList<>();
-                            String line;
-                            while ((line = readLine(in)).length() > 2) {
-                                headers.add(line.substring(0, line.length() - 2));
-                                String lower = line.toLowerCase(Locale.ENGLISH);
-                                if (lower.startsWith("content-length: ")) {
-                                    try {
-                                        contentLength = Optional.of(Long.parseLong(
-                                                lower.substring(lower.indexOf(':') + 1)));
-                                    } catch (NumberFormatException e) {
-                                        // do nothing
-                                    }
-                                }
-                            }
-                        }
-                        if (contentLength.isPresent()) {
-                            // read body
-                            readAll(new LimitingInputStream(in, contentLength.get()));
-                        }
-                        while (keepGoing) {
-                            try {
-                                Response response = queue.poll(100, TimeUnit.MILLISECONDS);
-                                if (response != null) {
-                                    try (OutputStream out = socket.getOutputStream()) {
+                        try {
+                            Response response = queue.poll(100, TimeUnit.MILLISECONDS);
+                            if (response != null) {
+                                // don't close the output stream after this interaction
+                                // the client behaves better if you close the socket instead
+                                OutputStream out = socket.getOutputStream();
 
-                                        // HTTP/1.1 200 OK
-                                        // headerName: headerValue
-                                        // empty line
-                                        // body
+                                // Example
+                                // HTTP/1.1 200 OK<CRLF>
+                                // headerName: headerValue<CRLF>
+                                // <CRLF>
+                                // body bytes
 
-                                        out.write(bytes("HTTP/1.1 " + response.statusCode() + " "
-                                                + response.reason()));
-                                        out.write(CRLF);
-                                        for (Entry<String, List<String>> header : response.headers()
-                                                .entrySet()) {
-                                            String line = header.getKey() + ": " + header.getValue()
-                                                    .stream().collect(Collectors.joining(","));
-                                            out.write(bytes(line));
-                                            out.write(CRLF);
-                                        }
-                                        out.write(CRLF);
-                                        out.flush();
-                                        if (response.body().length > 0) {
-                                            out.write(response.body());
-                                            out.flush();
-                                        }
-                                        break;
-                                    }
+                                out.write(bytes("HTTP/1.1 " + response.statusCode() + " "
+                                        + response.reason()));
+                                out.write(CRLF);
+                                for (Entry<String, List<String>> header : response.headers()
+                                        .entrySet()) {
+                                    String line = header.getKey() + ": " + header.getValue()
+                                            .stream().collect(Collectors.joining(","));
+                                    out.write(bytes(line));
+                                    out.write(CRLF);
                                 }
-                            } catch (InterruptedException e) {
-                                // do nothing
+                                out.write(CRLF);
+                                if (response.body().length > 0) {
+                                    out.write(response.body());
+                                }
+                                break;
                             }
+                        } catch (InterruptedException e) {
+                            // do nothing
                         }
                     }
                 } catch (SocketTimeoutException | SocketException e) {
                     // that's ok go round again
                 } catch (IOException e) {
                     e.printStackTrace();
+                } finally {
+                    if (socket != null) {
+                        try {
+                            socket.close();
+                        } catch (IOException e) {
+                            // ignore
+                        }
+                    }
                 }
             }
         } finally {
@@ -208,34 +215,8 @@ public final class Server implements AutoCloseable {
         }
     }
 
-//    private static void copy(InputStream in, OutputStream out) throws IOException {
-//        byte[] buffer = new byte[8192];
-//        int n;
-//        while ((n = in.read(buffer)) != -1) {
-//            out.write(buffer, 0, n);
-//        }
-//    }
-
     private static final byte[] bytes(String s) {
         return s.getBytes(StandardCharsets.UTF_8);
-    }
-
-    static final byte[] readAll(InputStream in) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buffer = new byte[8192];
-        int n;
-        while ((n = in.read(buffer)) != -1) {
-            out.write(buffer, 0, n);
-        }
-        return out.toByteArray();
-    }
-
-    static final byte[] readAllAndClose(InputStream in) throws IOException {
-        try {
-            return readAll(in);
-        } finally {
-            in.close();
-        }
     }
 
     static String readLine(InputStream in) throws IOException {
