@@ -32,8 +32,6 @@ public class ServerTest {
             HttpURLConnection c = (HttpURLConnection) url.openConnection();
             c.setRequestMethod("GET");
             c.addRequestProperty("Accept", "application-json");
-            c.setDoOutput(false);
-            c.setDoInput(true);
             Util.readAll(c.getInputStream());
             assertEquals(200, c.getResponseCode());
             assertEquals(1, c.getHeaderFields().size());
