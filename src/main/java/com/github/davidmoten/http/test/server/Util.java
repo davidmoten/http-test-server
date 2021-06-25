@@ -6,7 +6,6 @@ import java.io.InputStream;
 
 final class Util {
 
-    
     static final byte[] readAll(InputStream in) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
