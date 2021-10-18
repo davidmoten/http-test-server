@@ -13,7 +13,9 @@ try (Server server =
               .header("Accept", "application/json")
               .body("{}")
               .statusCode(201)
-          .response().body("an error occurred").statusCode(500)
+          .response()
+              .body("an error occurred")
+              .statusCode(500)
           .add()) {
     URL url = new URL(server.baseUrl() + "thing?state=joy");
     // hit the url a couple of times and do your asserts
