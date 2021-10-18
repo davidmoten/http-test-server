@@ -28,20 +28,66 @@ import java.util.stream.Collectors;
 public final class Server implements AutoCloseable {
 
     private static final byte[] CRLF = bytes("\r\n");
+    private static final int SOCKET_ACCEPT_WAIT_MS = 300;
+
     private final BlockingQueue<Response> queue;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private ServerSocket ss;
     private volatile boolean keepGoing = true;
-    private final CountDownLatch latch = new CountDownLatch(1);
+    private final CountDownLatch closeLatch = new CountDownLatch(1);
+    private final long serverThreadStartAwaitMs;
+    private final long serverThreadPauseForAcceptMs;
 
-    private Server() {
+    private Server(long serverThreadStartAwaitMs, long serverThreadPauseForAcceptMs) {
+        this.serverThreadStartAwaitMs = serverThreadStartAwaitMs;
+        this.serverThreadPauseForAcceptMs = serverThreadPauseForAcceptMs;
         this.queue = new LinkedBlockingQueue<Response>();
     }
 
+    @SuppressWarnings("resource")
     public static Server start() {
-        Server server = new Server();
-        server.startServer();
-        return server;
+        return builder().start();
+    }
+
+    public static ServerBuilder builder() {
+        return new ServerBuilder();
+    }
+
+    public static final class ServerBuilder {
+
+        long serverThreadStartAwaitMs = 10000;
+        long serverThreadPauseForAcceptMs = 100;
+
+        /**
+         * Sets time in ms to wait for server thread to start (pre-accept). Default
+         * value is 10000.
+         * 
+         * @param valueMs time in ms to wait for server thread to start (pre-accept).
+         * @return this
+         */
+        public ServerBuilder serverThreadStartAwaitMs(long valueMs) {
+            this.serverThreadStartAwaitMs = valueMs;
+            return this;
+        }
+
+        /**
+         * Sets time in ms to pause after the the server thread has started to ensure
+         * that accept method has been called. Default value is 100ms.
+         * 
+         * @param valueMs time in ms to pause after the the server thread has started to
+         *                ensure that accept method has been called
+         * @return this
+         */
+        public ServerBuilder serverThreadPauseForAcceptMs(long valueMs) {
+            this.serverThreadPauseForAcceptMs = valueMs;
+            return this;
+        }
+
+        @SuppressWarnings("resource")
+        public Server start() {
+            return new Server(serverThreadStartAwaitMs, serverThreadPauseForAcceptMs).startServer();
+        }
+
     }
 
     public Builder response() {
@@ -116,10 +162,23 @@ public final class Server implements AutoCloseable {
     private Server startServer() {
         try {
             this.ss = new ServerSocket(0);
-            executor.submit(() -> listen(ss));
+            try {
+                ss.setSoTimeout(SOCKET_ACCEPT_WAIT_MS);
+            } catch (SocketException e) {
+                throw new UncheckedIOException(e);
+            }
+            // do what we can to ensure that server has started
+            CountDownLatch latch = new CountDownLatch(1);
+            executor.submit(() -> listen(ss, latch));
+            latch.await(serverThreadStartAwaitMs, TimeUnit.MILLISECONDS);
+            // thread has started, give a small amount of time
+            // for accept method to be reached
+            Thread.sleep(serverThreadPauseForAcceptMs);
             return this;
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -127,17 +186,14 @@ public final class Server implements AutoCloseable {
         return "http://127.0.0.1:" + ss.getLocalPort() + "/";
     }
 
-    private void listen(ServerSocket ss) {
+    private void listen(ServerSocket ss, CountDownLatch latch) {
         try {
-            try {
-                ss.setSoTimeout(1000);
-            } catch (SocketException e1) {
-                return;
-            }
+            latch.countDown();
             while (keepGoing) {
                 Socket socket = null;
                 try {
                     socket = ss.accept();
+                    socket.setSoTimeout(1000);
                     InputStream in = socket.getInputStream();
                     // read request line
                     readLine(in);
@@ -211,7 +267,7 @@ public final class Server implements AutoCloseable {
                 }
             }
         } finally {
-            latch.countDown();
+            closeLatch.countDown();
         }
     }
 
@@ -243,7 +299,7 @@ public final class Server implements AutoCloseable {
         }
         executor.shutdown();
         try {
-            latch.await(1, TimeUnit.MINUTES);
+            closeLatch.await(10, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             // do nothing
         }
