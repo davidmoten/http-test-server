@@ -216,14 +216,11 @@ public final class Server implements AutoCloseable {
                 Util.readAll(new LimitingInputStream(in, contentLength.get()));
             }
 
-            // don't close the output stream after this interaction
-            // the client behaves better if you close the socket instead
-            OutputStream out = socket.getOutputStream();
             while (keepGoing) {
                 try {
                     Response response = queue.poll(100, TimeUnit.MILLISECONDS);
                     if (response != null) {
-                        writeResponse(out, response);
+                        writeResponse(socket, response);
                         break;
                     }
                     // if no response ready then loop again
@@ -255,13 +252,15 @@ public final class Server implements AutoCloseable {
         return Optional.empty();
     }
 
-    private static void writeResponse(OutputStream out, Response response)
+    private static void writeResponse(Socket socket, Response response)
             throws IOException, InterruptedException {
         // Example
         // HTTP/1.1 200 OK<CRLF>
         // headerName: headerValue<CRLF>
         // <CRLF>
         // body bytes
+
+        OutputStream out = socket.getOutputStream();
 
         out.write(bytes("HTTP/1.1 " + response.statusCode() + " " + response.reason()));
         out.write(CRLF);
@@ -275,8 +274,7 @@ public final class Server implements AutoCloseable {
         if (response.body().length > 0) {
             out.write(response.body());
         }
-        // hint to push to client
-        out.flush();
+        // let the client close otherwise can get connection reset
     }
 
     private static final byte[] bytes(String s) {
