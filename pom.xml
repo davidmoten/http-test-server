@@ -8,7 +8,7 @@
         <version>0.1</version>
     </parent>
     <artifactId>http-test-server</artifactId>
-    <version>0.1.3-SNAPSHOT</version>
+    <version>0.1.3</version>
 
     <name>${project.artifactId}</name>
     <description>a simple http server for unit testing</description>
@@ -79,7 +79,7 @@
         <connection>${scm.url}</connection>
         <developerConnection>${scm.url}</developerConnection>
         <url>${scm.url}</url>
-        <tag>0.1</tag>
+        <tag>0.1.3</tag>
     </scm>
 
     <dependencies>
