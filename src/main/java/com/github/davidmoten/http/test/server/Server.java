@@ -261,7 +261,6 @@ public final class Server implements AutoCloseable {
         // body bytes
 
         OutputStream out = socket.getOutputStream();
-
         out.write(bytes("HTTP/1.1 " + response.statusCode() + " " + response.reason()));
         out.write(CRLF);
         for (Entry<String, List<String>> header : response.headers().entrySet()) {
