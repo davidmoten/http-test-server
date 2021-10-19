@@ -32,13 +32,13 @@ public class ServerTest {
             HttpURLConnection c = (HttpURLConnection) url.openConnection();
             c.setRequestMethod("GET");
             c.addRequestProperty("Accept", "application-json");
-            Util.readAll(c.getInputStream());
             assertEquals(200, c.getResponseCode());
             assertEquals(1, c.getHeaderFields().size());
+            // don't read empty input as will hang
             c.disconnect();
         }
     }
-    
+
     @Test
     public void testServerReturnsBody() throws Exception {
         try (Server server = Server.start() //
@@ -51,7 +51,8 @@ public class ServerTest {
             c.addRequestProperty("Accept", "application-json");
             c.setDoOutput(false);
             c.setDoInput(true);
-            assertEquals("hi there", new String(Util.readAll(c.getInputStream()), StandardCharsets.UTF_8));
+            assertEquals("hi there",
+                    new String(Util.readAll(c.getInputStream()), StandardCharsets.UTF_8));
             assertEquals(200, c.getResponseCode());
             assertEquals("8", c.getHeaderField("Content-Length"));
             c.disconnect();
