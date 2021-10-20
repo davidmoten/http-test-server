@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/davidmoten/http-test-server/branch/master/graph/badge.svg?token=ZB09DXBFXM)](https://codecov.io/gh/davidmoten/http-test-server)<br/>
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.davidmoten/http-test-server/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/com.github.davidmoten/http-test-server)<br/>
 
-A very simple http server that returns responses in order that you specify (in a unit test).
+A very simple http server that returns responses in order that you specify (especially for unit testing).
 
 ```java
 try (Server server = 
