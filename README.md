@@ -22,3 +22,4 @@ try (Server server =
 }
 
 ```
+Note that `Content-Length` header is automatically returned in a response if not present already.
