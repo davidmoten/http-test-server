@@ -11,6 +11,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -99,7 +100,7 @@ public final class Server implements AutoCloseable {
         private int statusCode = 200;
         private String reason;
         private final Map<String, List<String>> headers = new HashMap<>();
-        private byte[] body = new byte[0];
+        private byte[] body;
         private final Server server;
 
         Builder(Server server, BlockingQueue<Response> queue) {
@@ -133,7 +134,7 @@ public final class Server implements AutoCloseable {
 
         public Builder body(byte[] body) {
             this.body = body;
-            return header("Content-Length", "" + body.length);
+            return this;
         }
 
         public Builder body(InputStream body) {
@@ -148,7 +149,16 @@ public final class Server implements AutoCloseable {
             if (reason == null) {
                 reason = StatusCode.reason(statusCode);
             }
-            Response r = new Response(statusCode, reason, headers, body);
+            final byte[] b;
+            if (body == null) {
+                b = new byte[0];
+            } else {
+                b = body;
+            }
+            if (!headers.keySet().stream().anyMatch(x -> "content-length".equalsIgnoreCase(x))) {
+                headers.put("Content-Length", Collections.singletonList(String.valueOf(b.length)));
+            }
+            Response r = new Response(statusCode, reason, headers, b);
             queue.offer(r);
             return server;
         }

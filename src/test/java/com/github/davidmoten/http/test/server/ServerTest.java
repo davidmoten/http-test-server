@@ -8,6 +8,9 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -33,8 +36,13 @@ public class ServerTest {
             c.setRequestMethod("GET");
             c.addRequestProperty("Accept", "application-json");
             assertEquals(200, c.getResponseCode());
-            assertEquals(1, c.getHeaderFields().size());
-            // don't read empty input as will hang
+            Map<String, List<String>> h = c.getHeaderFields();
+            assertEquals(Arrays.asList("HTTP/1.1 200 OK"), h.get(null));
+            assertEquals(Arrays.asList("0"), h.get("Content-Length"));
+            assertEquals(2, c.getHeaderFields().size());
+            // can read empty input stream because connection figures out there is nothing 
+            // there from Content-Length header = 0
+            Util.readAll(c.getInputStream());
             c.disconnect();
         }
     }
