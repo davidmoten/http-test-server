@@ -5,6 +5,8 @@
 
 A very simple http server that returns responses in order that you specify (especially for unit testing).
 
+**Status**: *deployed to Maven Central*
+
 ```java
 try (Server server = 
     Server.start()
