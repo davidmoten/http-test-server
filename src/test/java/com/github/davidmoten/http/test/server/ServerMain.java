@@ -18,7 +18,7 @@ public class ServerMain {
                 .body("hi there") //
                 .add();
         System.out.println(server.baseUrl());
-        Thread.sleep(100000);
+        Thread.sleep(10000000);
     }
 
 }
